@@ -105,15 +105,25 @@ export const mpeInstrument = options => {
    * //        timbre: 0.5,
    * //        pressure: 0 } ]
    *
-   * instrument.clear();
+   * instrument.clearAll();
    * instrument.activeNotes()
    * // => []
    *
    * @memberof mpeInstrument
    * @instance
-   * @return {undefined}
+   * @return {void} 
    */
-  const clear = () => store.dispatch(clearActiveNotes());
+  const clearAll = () => {store.dispatch(clearActiveNotes());};
+
+  /**
+   * `Clear` function remains only for the purpose of backward compatibility
+   * This is equivalent to the `clearAll` function
+   *
+   * @memberof mpeInstrument
+   * @instance
+   * @return {void} 
+   */
+  const clear = () => clearAll();
 
   /**
    * Reads an MPE message and updates `mpeInstrument` state
@@ -164,6 +174,7 @@ export const mpeInstrument = options => {
   return {
     processMidiMessage,
     clear,
+    clearAll,
     activeNotes,
     subscribe,
   };
