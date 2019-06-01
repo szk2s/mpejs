@@ -31,6 +31,8 @@ const activeNotes = (state = [], action) => {
         state;
     case types.ALL_NOTES_OFF:
       return [];
+    case types.ACTIVATE:
+      return [...state, ...action.notes];
   }
   return state;
 };

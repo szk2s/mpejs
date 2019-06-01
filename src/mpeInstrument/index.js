@@ -1,7 +1,12 @@
 import { createStore, applyMiddleware, compose } from 'redux';
-import { generateMidiActions, clearActiveNotes } from './actions';
+import { generateMidiActions, clearActiveNotes, generateActivateAction } from './actions';
 import { logger } from './middlewares';
-import { normalize, addPitch, convertPitchBendRange } from './utils/activeNoteUtils';
+import { 
+  normalize, unnormalize, 
+  addPitch, pickRequiredProperty, 
+  convertPitchBendRange, revertPitchBendRange,
+  createThresholdFunction,
+} from './utils/activeNoteUtils';
 import rootReducer from './reducers';
 
 /**
@@ -28,7 +33,7 @@ import rootReducer from './reducers';
  * @param {Object} options
  * @param {Boolean} [options.log=false] Log instrument state to the console on
  * change
- * @param {Boolean} [options.normalize=false] For all notes, remap `timbre`,
+ * @param {Boolean} [options.normalize=true] For all notes, remap `timbre`,
  * `noteOnVelocity`, `noteOffVelocity` and `pressure` between 0 and 1, remap
  * `pitchBend` between -1 and 1
  * @param {Boolean} [options.pitch=false] Adds a `pitch` property to all notes:
@@ -51,7 +56,14 @@ export const mpeInstrument = options => {
     defaultedOptions.pitchBendRange && convertPitchBendRange(defaultedOptions),
     defaultedOptions.normalize && normalize,
   ].filter(f => f));
+  const parseNote = compose(...[
+    defaultedOptions.normalize && unnormalize,
+    defaultedOptions.pitchBendRange && revertPitchBendRange(defaultedOptions),
+    defaultedOptions.pitch && pickRequiredProperty,
+    createThresholdFunction(defaultedOptions),
+  ].filter(f => f));
   const formatActiveNotes = notes => notes.map(formatNote);
+  const parseNotesToActivate = notes => notes.map(parseNote);
   const middlewares = [
     defaultedOptions.log && logger(formatActiveNotes),
   ].filter(f => f);
@@ -145,6 +157,44 @@ export const mpeInstrument = options => {
     actions.forEach(store.dispatch);
   };
 
+  
+  /**
+   * Updates `mpeInstrument` state by appending notes as active
+   * @example
+   * import mpeInstrument from 'mpe';
+   *
+   * const instrument = mpeInstrument();
+   *
+   * // Append two notes as active notes 
+   * const NOTE = { 
+   *  noteNumber: 60,
+   *  channel: 2,
+   *  noteOnVelocity: 127,
+   *  pitchBend: 48,
+   *  timbre: 8192,
+   *  pressure: 0,
+   * };
+   * 
+   * instrument.activate(NOTE);
+   * instrument.activeNote();
+   * // => [ { noteNumber: 60,
+   * //        channel: 2,
+   * //        noteOnVelocity: 127,
+   * //        pitchBend: 48,
+   * //        timbre: 8192,
+   * //        pressure: 0 } ]
+   * 
+   * @memberof mpeInstrument
+   * @instance
+   * @param {Array} notes notes to activate
+   * @return {undefined}
+   */
+  const activate = (...notes) => {
+    const action = generateActivateAction(parseNotesToActivate(notes));
+    store.dispatch(action);
+  };
+
+
   /**
    * Subscribes a callback to changes to the instance's active notes
    *
@@ -173,6 +223,7 @@ export const mpeInstrument = options => {
 
   return {
     processMidiMessage,
+    activate,
     clear,
     clearAll,
     activeNotes,

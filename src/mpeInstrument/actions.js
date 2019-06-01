@@ -7,6 +7,11 @@ export const clearActiveNotes = () => ({
   type: types.ALL_NOTES_OFF,
 });
 
+export const generateActivateAction = notes => ({
+  type: types.ACTIVATE,
+  notes,
+});
+
 export const generateMidiActions = (midiMessage, currentStateCallback) => {
   const channel = statusByteToChannel(midiMessage[0]);
   const dataBytes = midiMessage.slice(1);
